@@ -22,7 +22,17 @@ const DashboardScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const dispatch = useDispatch();
-  const { stats, todayOrders } = useSelector((state) => state.orders);
+
+  // ✅ Safe destructuring with defaults
+  const ordersState = useSelector((state) => state.orders || {});
+  const stats = ordersState?.stats ?? {
+    total: 0,
+    pending: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+  };
+  const todayOrders = ordersState?.todayOrders ?? [];
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -59,13 +69,14 @@ const DashboardScreen = ({ navigation }) => {
       });
 
       const today = new Date().toDateString();
-      const todayOrders = response.data.orders.filter(
-        (order) => new Date(order.createdAt).toDateString() === today
-      );
+      const todayOrders =
+        response.data?.orders?.filter(
+          (order) => new Date(order.createdAt).toDateString() === today
+        ) ?? [];
 
       dispatch(fetchTodayOrdersSuccess(todayOrders));
 
-      // Calculate stats
+      // Calculate stats safely
       const stats = {
         total: todayOrders.length,
         pending: todayOrders.filter((order) => order.status === "pending")
@@ -78,7 +89,12 @@ const DashboardScreen = ({ navigation }) => {
         ).length,
       };
 
-      dispatch(fetchOrdersSuccess({ orders: response.data.orders, stats }));
+      dispatch(
+        fetchOrdersSuccess({
+          orders: response.data?.orders ?? [],
+          stats,
+        })
+      );
     } catch (error) {
       console.error("Fetch orders error:", error);
     }
@@ -127,8 +143,10 @@ const DashboardScreen = ({ navigation }) => {
           <Text style={styles.statusText}>{order.status}</Text>
         </View>
       </View>
-      <Text style={styles.customerName}>{order.customerId.name}</Text>
-      <Text style={styles.orderTotal}>৳{order.totalAmount.toFixed(2)}</Text>
+      <Text style={styles.customerName}>{order.customerId?.name}</Text>
+      <Text style={styles.orderTotal}>
+        ৳{order.totalAmount?.toFixed(2) ?? "0.00"}
+      </Text>
       <Text style={styles.orderTime}>
         {new Date(order.createdAt).toLocaleTimeString()}
       </Text>
@@ -166,25 +184,25 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.statsGrid}>
           <StatCard
             title="Total Orders"
-            value={stats.total}
+            value={stats?.total ?? 0}
             color="#FF6B6B"
             icon="receipt"
           />
           <StatCard
             title="Pending"
-            value={stats.pending}
+            value={stats?.pending ?? 0}
             color="#FFA500"
             icon="schedule"
           />
           <StatCard
             title="Preparing"
-            value={stats.preparing}
+            value={stats?.preparing ?? 0}
             color="#FF9800"
             icon="restaurant"
           />
           <StatCard
             title="Ready"
-            value={stats.ready}
+            value={stats?.ready ?? 0}
             color="#4CAF50"
             icon="check-circle"
           />
@@ -255,24 +273,10 @@ const DashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    color: "#666",
-  },
-  welcomeSection: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 10,
-  },
+  container: { flex: 1, backgroundColor: "#f8f8f8" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, color: "#666" },
+  welcomeSection: { backgroundColor: "#fff", padding: 20, marginBottom: 10 },
   welcomeText: {
     fontSize: 24,
     fontWeight: "bold",
@@ -285,15 +289,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 5,
   },
-  restaurantStatus: {
-    fontSize: 14,
-    color: "#666",
-  },
-  statsSection: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 10,
-  },
+  restaurantStatus: { fontSize: 14, color: "#666" },
+  statsSection: { backgroundColor: "#fff", padding: 20, marginBottom: 10 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -319,21 +316,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 5,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  statTitle: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  actionsSection: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 10,
-  },
+  statValue: { fontSize: 24, fontWeight: "bold", color: "#333" },
+  statTitle: { fontSize: 14, color: "#666", fontWeight: "500" },
+  actionsSection: { backgroundColor: "#fff", padding: 20, marginBottom: 10 },
   actionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -354,21 +339,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  ordersSection: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 10,
-  },
+  ordersSection: { backgroundColor: "#fff", padding: 20, marginBottom: 10 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 15,
   },
-  seeAllText: {
-    color: "#FF6B6B",
-    fontWeight: "600",
-  },
+  seeAllText: { color: "#FF6B6B", fontWeight: "600" },
   orderItem: {
     backgroundColor: "#f8f8f8",
     padding: 15,
@@ -381,52 +359,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  orderId: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
+  orderId: { fontSize: 14, fontWeight: "600", color: "#333" },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   statusText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "bold",
     textTransform: "capitalize",
   },
-  customerName: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
+  customerName: { fontSize: 14, fontWeight: "500", marginBottom: 4 },
   orderTotal: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#FF6B6B",
     marginBottom: 4,
   },
-  orderTime: {
-    fontSize: 12,
-    color: "#666",
-  },
-  emptyOrders: {
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#999",
-    textAlign: "center",
-  },
+  orderTime: { fontSize: 12, color: "#666" },
+  emptyOrders: { alignItems: "center", padding: 40 },
+  emptyText: { fontSize: 16, color: "#666", marginTop: 10, marginBottom: 5 },
+  emptySubtext: { fontSize: 14, color: "#999", textAlign: "center" },
 });
 
 export default DashboardScreen;

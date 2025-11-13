@@ -40,34 +40,20 @@ export const authAPI = {
   register: (userData) => api.post("/auth/register", userData),
 };
 
-export const restaurantAPI = {
-  create: (restaurantData, token) => {
-    const headers = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    return api.post("/restaurants", restaurantData, { headers });
-  },
-  getMyRestaurant: () => api.get("/restaurants/my-restaurant"),
-  update: (restaurantData) =>
-    api.put("/restaurants/my-restaurant", restaurantData),
-};
-
-export const productAPI = {
-  create: (productData) => api.post("/products", productData),
-  getMyProducts: (params) => api.get("/products/my-products", { params }),
-  update: (productId, productData) =>
-    api.put(`/products/${productId}`, productData),
-  delete: (productId) => api.delete(`/products/${productId}`),
-  bulkAvailability: (data) => api.patch("/products/bulk-availability", data),
+export const userAPI = {
+  getProfile: () => api.get("/users/profile"),
+  updateProfile: (profileData) => api.put("/users/profile", profileData),
+  updateLocation: (locationData) =>
+    api.put("/users/rider/location", locationData),
 };
 
 export const orderAPI = {
-  getRestaurantOrders: (params) =>
-    api.get("/orders/restaurant/orders", { params }),
-  updateStatus: (orderId, statusData) =>
-    api.patch(`/orders/${orderId}/status`, statusData),
+  getAvailable: () => api.get("/orders/available"),
+  acceptOrder: (orderId) => api.patch(`/orders/${orderId}/accept`),
+  updateRiderStatus: (orderId, statusData) =>
+    api.patch(`/orders/${orderId}/rider-status`, statusData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
+  getMyOrders: (params) => api.get("/orders/my-orders", { params }),
 };
 
 export default api;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
+  ScrollView,
   Text,
   StyleSheet,
   FlatList,
@@ -12,9 +13,10 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { productAPI } from "../services/api";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useIsFocused } from "@react-navigation/native"; // ✅ ফোকাস ডিটেক্ট করার জন্য
 
 const MenuScreen = ({ navigation }) => {
   const [products, setProducts] = useState([]);
@@ -35,12 +37,15 @@ const MenuScreen = ({ navigation }) => {
     isAvailable: true,
   });
 
-  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const isFocused = useIsFocused(); // ✅ স্ক্রিন রিফোকাস হলে detect করবে
 
+  // স্ক্রিন ফোকাস হলে API থেকে নতুন ডেটা লোড করবে
   useEffect(() => {
-    loadMenu();
-  }, []);
+    if (isFocused) {
+      loadMenu();
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     filterProducts();
@@ -53,8 +58,8 @@ const MenuScreen = ({ navigation }) => {
         category: "all",
         availableOnly: false,
       });
-      setProducts(response.data.products);
-      setCategories(response.data.categories);
+      setProducts(response.data.products || []);
+      setCategories(response.data.categories || []);
     } catch (error) {
       console.error("Load menu error:", error);
       Alert.alert("Error", "Failed to load menu");
@@ -72,14 +77,12 @@ const MenuScreen = ({ navigation }) => {
   const filterProducts = () => {
     let filtered = products;
 
-    // Filter by category
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
         (product) => product.category === selectedCategory
       );
     }
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(
         (product) =>
@@ -95,8 +98,6 @@ const MenuScreen = ({ navigation }) => {
     try {
       const newStatus = !currentStatus;
       await productAPI.update(productId, { isAvailable: newStatus });
-
-      // Update local state
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
           product._id === productId
@@ -104,7 +105,6 @@ const MenuScreen = ({ navigation }) => {
             : product
         )
       );
-
       Alert.alert("Success", `Product ${newStatus ? "enabled" : "disabled"}`);
     } catch (error) {
       console.error("Toggle availability error:", error);
@@ -130,12 +130,9 @@ const MenuScreen = ({ navigation }) => {
   const confirmDelete = async (productId) => {
     try {
       await productAPI.delete(productId);
-
-      // Update local state
       setProducts((prevProducts) =>
         prevProducts.filter((product) => product._id !== productId)
       );
-
       Alert.alert("Success", "Product deleted successfully");
     } catch (error) {
       console.error("Delete product error:", error);
@@ -174,7 +171,6 @@ const MenuScreen = ({ navigation }) => {
 
       await productAPI.update(editingProduct._id, updateData);
 
-      // Update local state
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
           product._id === editingProduct._id
@@ -194,14 +190,12 @@ const MenuScreen = ({ navigation }) => {
 
   const bulkToggleAvailability = async (enable) => {
     const productIds = filteredProducts.map((product) => product._id);
-
     try {
       await productAPI.bulkAvailability({
         productIds,
         isAvailable: enable,
       });
 
-      // Update local state
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
           productIds.includes(product._id)
@@ -222,17 +216,14 @@ const MenuScreen = ({ navigation }) => {
       <View style={styles.productImageContainer}>
         <Icon name="fastfood" size={40} color="#ddd" />
       </View>
-
       <View style={styles.productInfo}>
         <View style={styles.productHeader}>
           <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.productPrice}>৳{item.price}</Text>
         </View>
-
         <Text style={styles.productDescription} numberOfLines={2}>
           {item.description || "No description"}
         </Text>
-
         <View style={styles.productMeta}>
           <Text style={styles.productCategory}>{item.category}</Text>
           <Text style={styles.preparationTime}>
@@ -240,7 +231,6 @@ const MenuScreen = ({ navigation }) => {
           </Text>
         </View>
       </View>
-
       <View style={styles.productActions}>
         <Switch
           value={item.isAvailable}
@@ -250,7 +240,6 @@ const MenuScreen = ({ navigation }) => {
           trackColor={{ false: "#767577", true: "#81b0ff" }}
           thumbColor={item.isAvailable ? "#FF6B6B" : "#f4f3f4"}
         />
-
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.editButton}
@@ -258,7 +247,6 @@ const MenuScreen = ({ navigation }) => {
           >
             <Icon name="edit" size={18} color="#666" />
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDeleteProduct(item)}
@@ -425,25 +413,6 @@ const MenuScreen = ({ navigation }) => {
         <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
       </View>
 
-      {/* Bulk Actions */}
-      {filteredProducts.length > 0 && (
-        <View style={styles.bulkActions}>
-          <Text style={styles.bulkTitle}>Bulk Actions:</Text>
-          <TouchableOpacity
-            style={styles.bulkButton}
-            onPress={() => bulkToggleAvailability(true)}
-          >
-            <Text style={styles.bulkButtonText}>Enable All</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bulkButton, styles.disableButton]}
-            onPress={() => bulkToggleAvailability(false)}
-          >
-            <Text style={styles.bulkButtonText}>Disable All</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Category Filters */}
       <ScrollView
         horizontal
@@ -466,44 +435,6 @@ const MenuScreen = ({ navigation }) => {
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.productsList}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Icon name="fastfood" size={64} color="#ddd" />
-            <Text style={styles.emptyText}>
-              {searchQuery || selectedCategory !== "all"
-                ? "No products found"
-                : "No products in your menu"}
-            </Text>
-            <Text style={styles.emptySubtext}>
-              {searchQuery || selectedCategory !== "all"
-                ? "Try changing your search or filter"
-                : "Add your first product to get started"}
-            </Text>
-            {(searchQuery || selectedCategory !== "all") && (
-              <TouchableOpacity
-                style={styles.clearFiltersButton}
-                onPress={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("all");
-                }}
-              >
-                <Text style={styles.clearFiltersText}>Clear Filters</Text>
-              </TouchableOpacity>
-            )}
-            {!searchQuery &&
-              selectedCategory === "all" &&
-              products.length === 0 && (
-                <TouchableOpacity
-                  style={styles.addFirstButton}
-                  onPress={() => navigation.navigate("AddProduct")}
-                >
-                  <Text style={styles.addFirstButtonText}>
-                    Add First Product
-                  </Text>
-                </TouchableOpacity>
-              )}
-          </View>
-        }
       />
 
       <EditProductModal />
@@ -511,6 +442,7 @@ const MenuScreen = ({ navigation }) => {
   );
 };
 
+// 💅 Styles নিচে থাকবে (আগের মতোই)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -821,8 +753,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
-// ScrollView import যোগ করুন
-import { ScrollView } from "react-native";
 
 export default MenuScreen;

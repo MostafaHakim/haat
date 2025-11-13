@@ -17,7 +17,7 @@ import {
   loginSuccess,
   loginFailure,
 } from "../store/slices/authSlice";
-import { authAPI, restaurantAPI } from "../services/api";
+import { authAPI } from "../services/api";
 
 const AuthScreen = ({ navigation }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -26,9 +26,8 @@ const AuthScreen = ({ navigation }) => {
     email: "",
     password: "",
     phone: "",
-    restaurantName: "",
-    address: "",
-    cuisineType: "",
+    vehicleType: "motorcycle",
+    licenseNumber: "",
   });
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.auth);
@@ -41,25 +40,15 @@ const AuthScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    const {
-      email,
-      password,
-      name,
-      phone,
-      restaurantName,
-      address,
-      cuisineType,
-    } = formData;
+    const { email, password, name, phone, vehicleType, licenseNumber } =
+      formData;
 
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
-    if (
-      !isLogin &&
-      (!name || !phone || !restaurantName || !address || !cuisineType)
-    ) {
+    if (!isLogin && (!name || !phone || !vehicleType || !licenseNumber)) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
@@ -70,40 +59,20 @@ const AuthScreen = ({ navigation }) => {
       let response;
       if (isLogin) {
         response = await authAPI.login({ email, password });
-        dispatch(loginSuccess(response.data));
-        navigation.replace("Main");
       } else {
-        // Register as seller
         response = await authAPI.register({
           name,
           email,
           password,
           phone,
-          userType: "seller",
-          restaurantName,
+          userType: "rider",
+          vehicleType,
+          licenseNumber,
         });
-
-        // Dispatch login success to store the token
-        dispatch(loginSuccess(response.data));
-
-        // Create restaurant, now passing the token directly
-        restaurantAPI.create(
-          {
-            name: restaurantName,
-            address,
-            cuisineType,
-            latitude: 23.8103, // Default coordinates (Dhaka)
-            longitude: 90.4125,
-          },
-          response.data.token // Pass the token here
-        ).catch(err => {
-          console.error("Failed to create restaurant in background:", err);
-          // Optionally, you could dispatch an action to notify the user
-          // or set a flag to prompt them to complete their profile later.
-        });
-        
-        navigation.replace("Main");
       }
+
+      dispatch(loginSuccess(response.data));
+      navigation.replace("Main");
     } catch (error) {
       const message = error.response?.data?.message || "Something went wrong";
       dispatch(loginFailure(message));
@@ -118,11 +87,9 @@ const AuthScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Text style={styles.title}>Seller Portal</Text>
+          <Text style={styles.title}>Rider Portal</Text>
           <Text style={styles.subtitle}>
-            {isLogin
-              ? "Sign in to your restaurant"
-              : "Create your restaurant account"}
+            {isLogin ? "Sign in to start delivering" : "Join our delivery team"}
           </Text>
         </View>
 
@@ -145,27 +112,42 @@ const AuthScreen = ({ navigation }) => {
                 keyboardType="phone-pad"
               />
 
-              <Text style={styles.sectionTitle}>Restaurant Information</Text>
+              <Text style={styles.sectionTitle}>Vehicle Information</Text>
+              <View style={styles.vehicleTypeContainer}>
+                <Text style={styles.label}>Vehicle Type</Text>
+                <View style={styles.vehicleOptions}>
+                  {["motorcycle", "bicycle", "car"].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.vehicleOption,
+                        formData.vehicleType === type &&
+                          styles.vehicleOptionActive,
+                      ]}
+                      onPress={() => handleInputChange("vehicleType", type)}
+                    >
+                      <Text
+                        style={[
+                          styles.vehicleOptionText,
+                          formData.vehicleType === type &&
+                            styles.vehicleOptionTextActive,
+                        ]}
+                      >
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
               <TextInput
                 style={styles.input}
-                placeholder="Restaurant Name"
-                value={formData.restaurantName}
+                placeholder="License Number"
+                value={formData.licenseNumber}
                 onChangeText={(text) =>
-                  handleInputChange("restaurantName", text)
+                  handleInputChange("licenseNumber", text)
                 }
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Restaurant Address"
-                value={formData.address}
-                onChangeText={(text) => handleInputChange("address", text)}
-                multiline
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Cuisine Type (e.g., Bangladeshi, Chinese, Indian)"
-                value={formData.cuisineType}
-                onChangeText={(text) => handleInputChange("cuisineType", text)}
+                autoCapitalize="characters"
               />
             </>
           )}
@@ -191,7 +173,7 @@ const AuthScreen = ({ navigation }) => {
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="#FF6B6B"
+              color="#4CAF50"
               style={styles.loader}
             />
           ) : (
@@ -235,7 +217,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#FF6B6B",
+    color: "#4CAF50",
     marginBottom: 10,
   },
   subtitle: {
@@ -262,8 +244,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#f9f9f9",
   },
+  vehicleTypeContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  vehicleOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  vehicleOption: {
+    flex: 1,
+    padding: 12,
+    marginHorizontal: 4,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  vehicleOptionActive: {
+    backgroundColor: "#E8F5E8",
+    borderColor: "#4CAF50",
+  },
+  vehicleOptionText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  vehicleOptionTextActive: {
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
   button: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "#4CAF50",
     borderRadius: 8,
     padding: 15,
     alignItems: "center",
@@ -280,7 +298,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   switchText: {
-    color: "#FF6B6B",
+    color: "#4CAF50",
     fontSize: 16,
   },
   loader: {
