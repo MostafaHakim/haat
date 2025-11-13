@@ -82,7 +82,7 @@ const AuthScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Text style={styles.title}>Food Delivery</Text>
+          <Text style={styles.title}>Haat</Text>
           <Text style={styles.subtitle}>
             {isLogin ? "Sign in to your account" : "Create your account"}
           </Text>

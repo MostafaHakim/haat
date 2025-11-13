@@ -87,21 +87,23 @@ const AuthScreen = ({ navigation }) => {
         dispatch(loginSuccess(response.data));
 
         // Create restaurant, now passing the token directly
-        restaurantAPI.create(
-          {
-            name: restaurantName,
-            address,
-            cuisineType,
-            latitude: 23.8103, // Default coordinates (Dhaka)
-            longitude: 90.4125,
-          },
-          response.data.token // Pass the token here
-        ).catch(err => {
-          console.error("Failed to create restaurant in background:", err);
-          // Optionally, you could dispatch an action to notify the user
-          // or set a flag to prompt them to complete their profile later.
-        });
-        
+        restaurantAPI
+          .create(
+            {
+              name: restaurantName,
+              address,
+              cuisineType,
+              latitude: 23.8103, // Default coordinates (Dhaka)
+              longitude: 90.4125,
+            },
+            response.data.token // Pass the token here
+          )
+          .catch((err) => {
+            console.error("Failed to create restaurant in background:", err);
+            // Optionally, you could dispatch an action to notify the user
+            // or set a flag to prompt them to complete their profile later.
+          });
+
         navigation.replace("Main");
       }
     } catch (error) {
@@ -118,7 +120,7 @@ const AuthScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Text style={styles.title}>Seller Portal</Text>
+          <Text style={styles.title}>Seller Haat</Text>
           <Text style={styles.subtitle}>
             {isLogin
               ? "Sign in to your restaurant"
