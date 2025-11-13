@@ -1,3 +1,6 @@
 {
-  "urlRandomness": "BLXRpTw"
+  "urlRandomness": "BLXRpTw",
+  "dev": true,
+  "minify": false,
+  "https": false
 }
