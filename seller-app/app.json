@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "eab459a6-1ff3-4611-b04a-804e04598b5f"
+      }
+    },
+    "android": {
+      "package": "com.mostafahakim.sellerapp"
+    }
+  }
+}

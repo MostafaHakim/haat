@@ -50,6 +50,18 @@ router.post("/", auth, authorize("seller"), async (req, res) => {
 });
 
 // Get seller's restaurant
+router.get("/", auth, async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find({ isActive: true }).populate(
+      "sellerId",
+      "name phone"
+    );
+    res.json(restaurants);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.get("/my-restaurant", auth, authorize("seller"), async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({ sellerId: req.user.id });

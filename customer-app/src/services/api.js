@@ -1,7 +1,7 @@
 import axios from "axios";
 import { store } from "../store/store";
 
-const API_BASE_URL = "http://192.168.0.103:5000/api"; // Change to your backend URL
+const API_BASE_URL = "https://haat-jade.vercel.app/api"; // Change to your backend URL
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -43,6 +43,7 @@ export const authAPI = {
 
 export const restaurantAPI = {
   getNearby: (params) => api.get("/restaurants/nearby", { params }),
+  getAll: () => api.get("/restaurants"),
   getById: (id) => api.get(`/restaurants/${id}`),
 };
 

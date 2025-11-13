@@ -392,6 +392,49 @@ import {
 import { useSelector } from "react-redux";
 import { productAPI } from "../services/api";
 
+// Moved FormField outside of AddProductScreen to prevent re-rendering issues
+const FormField = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+  multiline = false,
+  keyboardType = "default",
+  loading,
+}) => (
+  <View style={styles.fieldContainer}>
+    <Text style={styles.label}>
+      {label} {required && <Text style={styles.required}>*</Text>}
+    </Text>
+    <TextInput
+      style={[styles.input, multiline && styles.textArea]}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor="#999"
+      multiline={multiline}
+      numberOfLines={multiline ? 4 : 1}
+      keyboardType={keyboardType}
+      editable={!loading}
+    />
+  </View>
+);
+
+// Moved SwitchField outside of AddProductScreen to prevent re-rendering issues
+const SwitchField = ({ label, value, onValueChange, loading }) => (
+  <View style={styles.switchContainer}>
+    <Text style={styles.label}>{label}</Text>
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: "#767577", true: "#81b0ff" }}
+      thumbColor={value ? "#FF6B6B" : "#f4f3f4"}
+      disabled={loading}
+    />
+  </View>
+);
+
 const AddProductScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -490,47 +533,6 @@ const AddProductScreen = ({ navigation }) => {
     }
   };
 
-  // Simple FormField component without refs
-  const FormField = ({
-    label,
-    value,
-    onChange,
-    placeholder,
-    required = false,
-    multiline = false,
-    keyboardType = "default",
-  }) => (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.label}>
-        {label} {required && <Text style={styles.required}>*</Text>}
-      </Text>
-      <TextInput
-        style={[styles.input, multiline && styles.textArea]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        multiline={multiline}
-        numberOfLines={multiline ? 4 : 1}
-        keyboardType={keyboardType}
-        editable={!loading}
-      />
-    </View>
-  );
-
-  const SwitchField = ({ label, value, onValueChange }) => (
-    <View style={styles.switchContainer}>
-      <Text style={styles.label}>{label}</Text>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: "#767577", true: "#81b0ff" }}
-        thumbColor={value ? "#FF6B6B" : "#f4f3f4"}
-        disabled={loading}
-      />
-    </View>
-  );
-
   return (
     <ScrollView
       style={styles.container}
@@ -561,6 +563,7 @@ const AddProductScreen = ({ navigation }) => {
           onChange={(text) => handleInputChange("name", text)}
           placeholder="e.g., Chicken Biryani"
           required
+          loading={loading}
         />
 
         <FormField
@@ -569,6 +572,7 @@ const AddProductScreen = ({ navigation }) => {
           onChange={(text) => handleInputChange("description", text)}
           placeholder="Describe your product..."
           multiline
+          loading={loading}
         />
 
         <FormField
@@ -577,6 +581,7 @@ const AddProductScreen = ({ navigation }) => {
           onChange={(text) => handleInputChange("category", text)}
           placeholder="e.g., Biryani, Appetizers, Desserts"
           required
+          loading={loading}
         />
 
         {/* Pricing */}
@@ -591,6 +596,7 @@ const AddProductScreen = ({ navigation }) => {
               placeholder="0.00"
               required
               keyboardType="decimal-pad"
+              loading={loading}
             />
           </View>
 
@@ -601,6 +607,7 @@ const AddProductScreen = ({ navigation }) => {
               onChange={(text) => handleInputChange("originalPrice", text)}
               placeholder="0.00 (Optional)"
               keyboardType="decimal-pad"
+              loading={loading}
             />
           </View>
         </View>
@@ -614,6 +621,7 @@ const AddProductScreen = ({ navigation }) => {
           onChange={(text) => handleInputChange("preparationTime", text)}
           placeholder="15"
           keyboardType="number-pad"
+          loading={loading}
         />
 
         <FormField
@@ -622,6 +630,7 @@ const AddProductScreen = ({ navigation }) => {
           onChange={(text) => handleInputChange("ingredients", text)}
           placeholder="e.g., Chicken, Rice, Spices (comma separated)"
           multiline
+          loading={loading}
         />
 
         <FormField
@@ -629,6 +638,7 @@ const AddProductScreen = ({ navigation }) => {
           value={formData.tags}
           onChange={(text) => handleInputChange("tags", text)}
           placeholder="e.g., spicy, popular, healthy (comma separated)"
+          loading={loading}
         />
 
         {/* Settings */}
@@ -638,12 +648,14 @@ const AddProductScreen = ({ navigation }) => {
           label="Vegetarian"
           value={formData.isVeg}
           onValueChange={(value) => handleInputChange("isVeg", value)}
+          loading={loading}
         />
 
         <SwitchField
           label="Available for ordering"
           value={formData.isAvailable}
           onValueChange={(value) => handleInputChange("isAvailable", value)}
+          loading={loading}
         />
 
         {/* Submit Button */}

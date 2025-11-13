@@ -58,7 +58,12 @@ const HomeScreen = ({ navigation }) => {
         longitude: coords.longitude,
         maxDistance: 10,
       });
-      setRestaurants(response.data);
+      if (response.data.length > 0) {
+        setRestaurants(response.data);
+      } else {
+        const allRestaurantsResponse = await restaurantAPI.getAll();
+        setRestaurants(allRestaurantsResponse.data);
+      }
     } catch (error) {
       console.error("Fetch restaurants error:", error);
       Alert.alert("Error", "Failed to load restaurants");
