@@ -19,13 +19,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(
-  process.env.MONGODB_URI || "mongodb://localhost:27017/food_delivery",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
-);
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 // Make io accessible to routes
 app.set("io", io);
