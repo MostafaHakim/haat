@@ -22,6 +22,8 @@ const HomeScreen = ({ navigation }) => {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState(null);
+  const [locationError, setLocationError] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -31,42 +33,104 @@ const HomeScreen = ({ navigation }) => {
 
   const getLocationAndRestaurants = async () => {
     try {
+      setLocationLoading(true);
+      setLocationError(false);
+      console.log("Requesting location permission...");
+
       let { status } = await Location.requestForegroundPermissionsAsync();
+
       if (status !== "granted") {
+        console.log("Location permission denied");
+        setLocationError(true);
         Alert.alert(
-          "Permission denied",
-          "Need location permission to find nearby restaurants"
+          "Location Permission Required",
+          "We need location access to show restaurants near you. You can still browse all restaurants.",
+          [
+            {
+              text: "OK",
+              onPress: () => fetchAllRestaurants(),
+            },
+          ]
         );
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location.coords);
+      console.log("Getting current position...");
 
-      await fetchNearbyRestaurants(location.coords);
+      // Try to get last known position first (faster)
+      let lastPosition = await Location.getLastKnownPositionAsync();
+      if (lastPosition) {
+        console.log("Using last known position:", lastPosition.coords);
+        setLocation(lastPosition.coords);
+        await fetchNearbyRestaurants(lastPosition.coords);
+        return;
+      }
+
+      // If no last known position, get fresh location with better options
+      let currentPosition = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        timeout: 10000, // 10 seconds timeout
+        maximumAge: 30000, // Accept location up to 30 seconds old
+      });
+
+      console.log("Fresh location obtained:", currentPosition.coords);
+      setLocation(currentPosition.coords);
+      await fetchNearbyRestaurants(currentPosition.coords);
     } catch (error) {
-      console.error("Location error:", error);
-      Alert.alert("Error", "Failed to get location");
+      console.error("Location error details:", error);
+      setLocationError(true);
+
+      // Try using a default location as fallback
+      const defaultLocation = {
+        latitude: 23.8103, // Default to Dhaka coordinates
+        longitude: 90.4125,
+      };
+
+      console.log("Using default location:", defaultLocation);
+      setLocation(defaultLocation);
+      await fetchNearbyRestaurants(defaultLocation);
+    } finally {
+      setLocationLoading(false);
     }
   };
-  console.log(location);
+
+  const fetchAllRestaurants = async () => {
+    try {
+      setLoading(true);
+      const response = await restaurantAPI.getAll();
+      setRestaurants(response.data);
+      console.log("Fetched all restaurants:", response.data.length);
+    } catch (error) {
+      console.error("Fetch all restaurants error:", error);
+      Alert.alert("Error", "Failed to load restaurants");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchNearbyRestaurants = async (coords) => {
     try {
       setLoading(true);
+      console.log("Fetching nearby restaurants with coords:", coords);
+
       const response = await restaurantAPI.getNearby({
         latitude: coords.latitude,
         longitude: coords.longitude,
-        maxDistance: 10,
+        maxDistance: 50,
       });
-      if (response.data.length > 0) {
+
+      console.log("Nearby restaurants response:", response.data);
+
+      if (response.data && response.data.length > 0) {
         setRestaurants(response.data);
       } else {
-        const allRestaurantsResponse = await restaurantAPI.getAll();
-        setRestaurants(allRestaurantsResponse.data);
+        console.log("No nearby restaurants found, fetching all restaurants");
+        await fetchAllRestaurants();
       }
     } catch (error) {
-      console.error("Fetch restaurants error:", error);
-      Alert.alert("Error", "Failed to load restaurants");
+      console.error("Fetch nearby restaurants error:", error);
+      // Fallback to all restaurants if nearby fails
+      await fetchAllRestaurants();
     } finally {
       setLoading(false);
     }
@@ -82,6 +146,10 @@ const HomeScreen = ({ navigation }) => {
     } finally {
       setOrdersLoading(false);
     }
+  };
+
+  const retryLocation = async () => {
+    await getLocationAndRestaurants();
   };
 
   const renderRestaurantItem = ({ item }) => (
@@ -101,7 +169,9 @@ const HomeScreen = ({ navigation }) => {
         <Text style={styles.restaurantCuisine}>{item.cuisineType}</Text>
         <Text style={styles.restaurantAddress}>{item.address}</Text>
         <Text style={styles.restaurantRating}>⭐ {item.rating || "New"}</Text>
-        <Text style={styles.deliveryInfo}>Delivery: 30-45 min</Text>
+        {location && !locationError && (
+          <Text style={styles.deliveryInfo}>Delivery: 30-45 min</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -168,11 +238,13 @@ const HomeScreen = ({ navigation }) => {
       restaurant.cuisineType.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
+  // Show loading only if both location and restaurants are loading
+  if (loading && locationLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#FF6B6B" />
         <Text style={styles.loadingText}>Finding restaurants near you...</Text>
+        <Text style={styles.subLoadingText}>This may take a few seconds</Text>
       </View>
     );
   }
@@ -191,39 +263,84 @@ const HomeScreen = ({ navigation }) => {
         onChangeText={setSearchQuery}
       />
 
+      {/* Location Status Banner */}
+      {locationError ? (
+        <View style={styles.locationErrorBanner}>
+          <Icon name="location-off" size={20} color="#FFF" />
+          <Text style={styles.locationErrorText}>Using default location</Text>
+          <TouchableOpacity onPress={retryLocation}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : location ? (
+        <View style={styles.locationSuccessBanner}>
+          <Icon name="my-location" size={16} color="#4CAF50" />
+          <Text style={styles.locationSuccessText}>
+            Showing restaurants near you
+          </Text>
+        </View>
+      ) : null}
+
       {/* Recent Orders Section */}
       {recentOrders.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("OrderHistory")}
+            >
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          <FlatList
-            data={recentOrders}
-            renderItem={renderOrderItem}
-            keyExtractor={(item) => item._id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.ordersList}
-          />
+          {ordersLoading ? (
+            <ActivityIndicator size="small" color="#FF6B6B" />
+          ) : (
+            <FlatList
+              data={recentOrders}
+              renderItem={renderOrderItem}
+              keyExtractor={(item) => item._id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.ordersList}
+            />
+          )}
         </View>
       )}
 
-      {/* Nearby Restaurants Section */}
+      {/* Restaurants Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Nearby Restaurants</Text>
-        <FlatList
-          data={filteredRestaurants}
-          renderItem={renderRestaurantItem}
-          keyExtractor={(item) => item._id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No restaurants found nearby</Text>
-          }
-        />
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {locationError ? "All Restaurants" : "Nearby Restaurants"}
+          </Text>
+          <TouchableOpacity onPress={retryLocation}>
+            <Icon name="refresh" size={20} color="#FF6B6B" />
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B6B" />
+            <Text style={styles.loadingText}>Loading restaurants...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredRestaurants}
+            renderItem={renderRestaurantItem}
+            keyExtractor={(item) => item._id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Icon name="restaurant" size={50} color="#DDD" />
+                <Text style={styles.emptyText}>No restaurants found</Text>
+                <Text style={styles.emptySubText}>
+                  Try adjusting your search or check back later
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
     </View>
   );
@@ -240,9 +357,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
   loadingText: {
     marginTop: 10,
     color: "#666",
+    fontSize: 16,
+  },
+  subLoadingText: {
+    marginTop: 5,
+    color: "#999",
+    fontSize: 12,
   },
   header: {
     marginBottom: 20,
@@ -262,9 +389,45 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     padding: 15,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 15,
     fontSize: 16,
     backgroundColor: "#f9f9f9",
+  },
+  locationErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF6B6B",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  locationSuccessBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E8",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+  },
+  locationErrorText: {
+    color: "#FFF",
+    marginLeft: 8,
+    flex: 1,
+    fontSize: 14,
+  },
+  locationSuccessText: {
+    color: "#2E7D32",
+    marginLeft: 8,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  retryText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    textDecorationLine: "underline",
   },
   section: {
     marginBottom: 25,
@@ -385,11 +548,21 @@ const styles = StyleSheet.create({
     color: "#4CAF50",
     marginTop: 5,
   },
+  emptyContainer: {
+    alignItems: "center",
+    padding: 40,
+  },
   emptyText: {
     textAlign: "center",
     color: "#666",
     fontSize: 16,
-    marginTop: 50,
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  emptySubText: {
+    textAlign: "center",
+    color: "#999",
+    fontSize: 14,
   },
 });
 

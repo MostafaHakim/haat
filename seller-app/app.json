@@ -1,12 +1,55 @@
 {
   "expo": {
+    "name": "Seller App",
+    "slug": "seller-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "https://via.placeholder.com/300x150/FF6B6B/FFFFFF?text=Food+Delivery+Seller",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mostafahakim.sellerapp",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses your location for delivery tracking and restaurant management.",
+        "NSLocationAlwaysUsageDescription": "This app uses your location for real-time delivery tracking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location for delivery tracking and restaurant management."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "https://via.placeholder.com/150/FF6B6B/FFFFFF?text=FD",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE"
+      ],
+      "package": "com.mostafahakim.sellerapp"
+    },
+    "web": {
+      "favicon": "https://via.placeholder.com/32/FF6B6B/FFFFFF?text=FD"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Food Delivery Seller to use your location for delivery tracking and management.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "eab459a6-1ff3-4611-b04a-804e04598b5f"
       }
-    },
-    "android": {
-      "package": "com.mostafahakim.sellerapp"
     }
   }
 }
