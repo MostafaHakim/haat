@@ -75,9 +75,9 @@ router.get("/my-restaurant", auth, authorize("seller"), async (req, res) => {
 });
 
 // Get restaurants near customer location
-router.get("/nearby", auth, async (req, res) => {
+router.get("/nearby", async (req, res) => {
   try {
-    const { latitude, longitude, maxDistance = 10 } = req.query; // maxDistance in km
+    const { latitude, longitude, maxDistance = 50 } = req.query; // maxDistance in km
 
     if (!latitude || !longitude) {
       return res

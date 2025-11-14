@@ -49,7 +49,7 @@ const HomeScreen = ({ navigation }) => {
       Alert.alert("Error", "Failed to get location");
     }
   };
-
+  console.log(location);
   const fetchNearbyRestaurants = async (coords) => {
     try {
       setLoading(true);
