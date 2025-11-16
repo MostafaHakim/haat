@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const { auth, authorize } = require("../middleware/auth");
-const orderController = require("../controllers/order.controller"); // path adjust if needed
+const orderController = require("../controller/order.controller"); // path adjust if needed
 const Order = require("../models/order.model");
 const Restaurant = require("../models/Restaurant");
 const User = require("../models/User");
@@ -165,12 +165,10 @@ router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
 
     const rider = await User.findById(req.user.id);
     if (!rider || !rider.isAvailable)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "You are not available for delivery",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "You are not available for delivery",
+      });
 
     // distance check if both have locations
     if (
@@ -188,12 +186,10 @@ router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
           order.restaurantId.location.coordinates[0]
         );
       if (distance > 3)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "You are too far from the restaurant",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "You are too far from the restaurant",
+        });
     }
 
     order.riderId = req.user.id;
