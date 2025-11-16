@@ -1,7 +1,28 @@
 import axios from "axios";
 import { store } from "../store/store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "https://haat-jade.vercel.app/api"; // Change to your backend URL
+const API_BASE_URL = "https://haat-jade.vercel.app/api";
+
+// Token management function
+const getToken = async () => {
+  try {
+    // First try to get token from Redux store
+    const state = store.getState();
+    const tokenFromStore = state.auth.token;
+
+    if (tokenFromStore) {
+      return tokenFromStore;
+    }
+
+    // If not in store, try AsyncStorage as fallback
+    const tokenFromStorage = await AsyncStorage.getItem("authToken");
+    return tokenFromStorage;
+  } catch (error) {
+    console.error("Error getting token:", error);
+    return null;
+  }
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,10 +33,14 @@ const api = axios.create({
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  (config) => {
-    const token = store.getState().auth.token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    try {
+      const token = await getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error("Error setting auth header:", error);
     }
     return config;
   },
@@ -56,9 +81,7 @@ export const productAPI = {
 export const orderAPI = {
   create: (orderData) => api.post("/orders", orderData),
   getMyOrders: (params) => api.get("/orders/my-orders", { params }),
-  getById: (orderId) => api.get(`/orders/${orderId}`),
-  updateStatus: (orderId, statusData) =>
-    api.patch(`/orders/${orderId}/status`, statusData),
+  getOrderDetails: (orderId) => api.get(`/orders/${orderId}`),
 };
 
 export const userAPI = {
