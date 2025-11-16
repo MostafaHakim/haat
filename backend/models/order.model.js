@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-import { nanoid } from "nanoid";
 const Schema = mongoose.Schema;
 
 /* ========================
@@ -119,7 +118,7 @@ const OrderSchema = new Schema(
 ======================== */
 OrderSchema.pre("validate", function (next) {
   if (!this.orderId) {
-    this.orderId = "ORD-" + nanoid(10); // Example: ORD-X92kL0aPq
+    this.orderId = "ORD-" + `${Date.now()}`; // Example: ORD-X92kL0aPq
   }
   next();
 });
