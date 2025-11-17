@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import MapView, { Marker, Polyline } from "react-native-maps";
-import { orderAPI } from "../services/api";
+import { API_BASE_URL, orderAPI } from "../services/api";
 import {
   updateOrderStatus,
   updateRiderLocation,
@@ -39,7 +39,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
     { key: "preparing", label: "Preparing", icon: "restaurant" },
     { key: "ready", label: "Ready", icon: "done" },
     { key: "assigned", label: "Rider Assigned", icon: "person" },
-    { key: "picked_up", label: "Picked Up", icon: "package" },
+    { key: "picked_up", label: "Picked Up", icon: "inventory" },
     { key: "on_the_way", label: "On the Way", icon: "motorcycle" },
     { key: "delivered", label: "Delivered", icon: "home" },
   ];
@@ -66,7 +66,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       const response = await orderAPI.getById(orderId);
-      setOrder(response.data);
+      setOrder(response.data.data);
       dispatch(updateOrderStatus({ orderId, status: response.data.status }));
     } catch (error) {
       console.error("Fetch order error:", error);
@@ -77,7 +77,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   };
 
   const setupWebSocket = () => {
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io(API_BASE_URL, {
       transports: ["websocket"],
     });
 

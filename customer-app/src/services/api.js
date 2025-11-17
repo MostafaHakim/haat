@@ -2,7 +2,7 @@ import axios from "axios";
 import { store } from "../store/store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "https://haat-jade.vercel.app/api";
+export const API_BASE_URL = "https://haat-jade.vercel.app/api";
 
 // Token management function
 const getToken = async () => {
@@ -82,6 +82,9 @@ export const orderAPI = {
   create: (orderData) => api.post("/orders", orderData),
   getMyOrders: (params) => api.get("/orders/my-orders", { params }),
   getOrderDetails: (orderId) => api.get(`/orders/${orderId}`),
+
+  // 👇 নতুনটি যোগ করুন
+  getById: (orderId) => api.get(`/orders/${orderId}`),
 };
 
 export const userAPI = {
