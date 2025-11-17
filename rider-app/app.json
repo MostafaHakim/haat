@@ -1,12 +1,73 @@
 {
   "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "56e894e1-c9fa-43b0-90fe-6f822957d29c"
-      }
+    "name": "rider-app",
+    "slug": "rider-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.mostafahakim.riderapp"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.mostafahakim.riderapp",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDr1lVC47qZufuTpozX5o-o8yobtf9ma80"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "অ্যাপটি আপনার লোকেশন ব্যবহার করবে রাইডার ট্র্যাকিংয়ের জন্য।",
+          "locationAlwaysPermission": "অ্যাপটি ব্যাকগ্রাউন্ডেও লোকেশন ব্যবহার করতে চায়।",
+          "locationWhenInUsePermission": "অ্যাপটি লোকেশন ব্যবহার করবে যখন আপনি অ্যাপ ব্যবহার করবেন।"
+        }
+      ],
+      "expo-notifications",
+      "expo-task-manager",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "233c1c15-f2b0-4757-b7e3-4f77528a7cee"
+      }
     }
   }
 }
