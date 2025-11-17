@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "56e894e1-c9fa-43b0-90fe-6f822957d29c"
+      }
+    },
+    "android": {
+      "package": "com.mostafahakim.riderapp"
+    }
+  }
+}
