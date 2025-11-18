@@ -39,6 +39,34 @@ router.get("/my-orders", auth, authorize("customer"), async (req, res) => {
   }
 });
 
+// get rider's orders
+router.get("/my-rider-orders", auth, authorize("rider"), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const query = { riderId: req.user.id };
+    if (status && status !== "all") query.status = status;
+
+    const orders = await Order.find(query)
+      .populate("restaurantId", "name image cuisineType")
+      .populate("customerId", "name phone")
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Order.countDocuments(query);
+    res.json({
+      success: true,
+      orders,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total,
+    });
+  } catch (error) {
+    console.error("Get rider orders error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // get restaurant's orders (seller)
 router.get(
   "/restaurant/orders",

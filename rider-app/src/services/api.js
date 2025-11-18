@@ -53,7 +53,7 @@ export const orderAPI = {
   updateRiderStatus: (orderId, statusData) =>
     api.patch(`/orders/${orderId}/rider-status`, statusData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
-  getMyOrders: (params) => api.get("/orders/my-orders", { params }),
+  getMyOrders: (params) => api.get("/orders/my-rider-orders", { params }),
 };
 
 export default api;
