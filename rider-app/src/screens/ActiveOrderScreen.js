@@ -90,7 +90,7 @@ const ActiveOrderScreen = ({ navigation }) => {
   };
 
   const setupWebSocket = () => {
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io("https://haat-zkun.onrender.com", {
       transports: ["websocket"],
     });
 

@@ -2,7 +2,7 @@ import axios from "axios";
 import { store } from "../store/store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const API_BASE_URL = "https://haat-jade.vercel.app/api";
+export const API_BASE_URL = "https://haat-zkun.onrender.com/api";
 
 // Token management function
 const getToken = async () => {
