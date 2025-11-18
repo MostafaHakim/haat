@@ -206,37 +206,78 @@ const ActiveOrderScreen = ({ navigation }) => {
   const handleStatusUpdate = async (newStatus) => {
     try {
       setUpdatingStatus(true);
-      console.log("🔄 Updating order status to:", newStatus);
 
-      // ✅ SAFE: Prepare status data with proper location
+      // ✅ GET activeOrder FROM REDUX
+      const { activeOrder } = useSelector((state) => state.orders);
+
+      if (!activeOrder) {
+        Alert.alert("Error", "No active order found");
+        return;
+      }
+
+      console.log("🔄 Updating order status to:", newStatus);
+      console.log("🎯 Active Order ID:", activeOrder._id);
+      console.log("📋 Active Order Status:", activeOrder.status);
+
+      // ✅ GET CURRENT LOCATION
+      let riderLocation = null;
+      try {
+        const location = await Location.getCurrentPositionAsync({});
+        riderLocation = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address: "Current Location",
+        };
+        console.log("📍 Rider Location:", riderLocation);
+      } catch (locationError) {
+        console.warn("Location fetch failed:", locationError);
+        // Use mock location
+        riderLocation = {
+          latitude: 23.8103,
+          longitude: 90.4125,
+          address: "Demo Location",
+        };
+      }
+
+      // ✅ PREPARE STATUS DATA
       const statusData = {
         status: newStatus,
-        ...(riderLocation && {
-          location: riderLocation,
-        }),
+        ...(riderLocation && { location: riderLocation }),
         timestamp: new Date().toISOString(),
       };
 
-      console.log("📦 Status data:", statusData);
+      console.log(
+        "📦 Status data to send:",
+        JSON.stringify(statusData, null, 2)
+      );
 
-      // ✅ FIXED API CALL - Use correct endpoint
-      // Option 1: If you have rider-status endpoint
+      // ✅ API CALL WITH BETTER ERROR HANDLING
+      console.log(
+        "🌐 Making API call to:",
+        `/orders/${activeOrder._id}/rider-status`
+      );
+
       const response = await orderAPI.updateStatus(activeOrder._id, statusData);
 
-      // Option 2: If no separate endpoint, use PATCH on order
-      // const response = await orderAPI.updateRiderStatus(
-      //   activeOrder._id,
-      //   statusData
-      // );
+      console.log(
+        "✅ API Response received:",
+        JSON.stringify(response.data, null, 2)
+      );
 
-      console.log("✅ Status update response:", response.data);
+      // ✅ CHECK RESPONSE SUCCESS
+      if (!response.data.success) {
+        throw new Error(
+          response.data.message || "API returned unsuccessful response"
+        );
+      }
 
-      // ✅ SAFE: Handle response properly
       const updatedOrder = response.data.data || response.data;
 
       if (!updatedOrder) {
         throw new Error("No order data in response");
       }
+
+      console.log("🎉 Order updated successfully:", updatedOrder.status);
 
       // ✅ Update Redux store
       dispatch(
@@ -274,13 +315,20 @@ const ActiveOrderScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error("❌ Update status error:", error);
-      console.log("Error response:", error.response?.data);
+      console.error("❌ UPDATE STATUS ERROR DETAILS:");
+      console.log("Error Message:", error.message);
+      console.log("Error Response Status:", error.response?.status);
+      console.log("Error Response Data:", error.response?.data);
+      console.log("Error Response Headers:", error.response?.headers);
+      console.log("Error Config:", error.config?.url);
 
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to update order status";
+      let errorMessage = "Failed to update order status";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
 
       Alert.alert("Update Failed", errorMessage);
     } finally {

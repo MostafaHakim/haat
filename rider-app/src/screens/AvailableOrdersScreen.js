@@ -456,12 +456,46 @@ const AvailableOrdersScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { availableOrders } = useSelector((state) => state.orders);
   const { user } = useSelector((state) => state.auth);
+  const { activeOrder } = useSelector((state) => state.orders);
 
   useEffect(() => {
     console.log("AvailableOrders Screen - User:", user);
     console.log("User location:", user?.location);
     loadAvailableOrders();
   }, []);
+
+  // ActiveOrderScreen.js - লোকেশন ট্র্যাকিং যোগ করুন
+  useEffect(() => {
+    let locationInterval;
+
+    if (activeOrder && activeOrder.status !== "delivered") {
+      // Update location every 30 seconds
+      locationInterval = setInterval(async () => {
+        try {
+          const location = await Location.getCurrentPositionAsync({});
+          const locationData = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            address: "Current Location",
+          };
+
+          // Update rider location in backend
+          await userAPI.updateLocation(locationData);
+
+          // Update local state
+          setRiderLocation(locationData);
+        } catch (error) {
+          console.warn("Location update failed:", error);
+        }
+      }, 30000);
+    }
+
+    return () => {
+      if (locationInterval) {
+        clearInterval(locationInterval);
+      }
+    };
+  }, [activeOrder]);
 
   const loadAvailableOrders = async () => {
     try {
