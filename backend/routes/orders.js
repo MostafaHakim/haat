@@ -572,6 +572,16 @@ router.patch(
   orderController.updateRiderOrderStatus
 );
 
+// routes/order.routes.js - SIMPLIFIED rider-status route
+
+// THIS IS THE NEW, CORRECT ROUTE
+router.patch(
+  "/:orderId/rider/update-status",
+  auth,
+  authorize("rider"),
+  orderController.updateRiderOrderStatus
+);
+
 router.patch(
   "/:orderId/rider-status",
   auth,

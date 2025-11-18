@@ -17,19 +17,6 @@ const OrderItemSchema = new Schema(
 );
 
 /* ========================
-    STATUS HISTORY SCHEMA
-======================== */
-const StatusHistorySchema = new Schema(
-  {
-    status: { type: String, required: true },
-    note: { type: String },
-    timestamp: { type: Date, default: Date.now },
-    location: { type: GeoLocationSchema, required: false },
-  },
-  { _id: false }
-);
-
-/* ========================
        GEO LOCATION SCHEMA
 ======================== */
 const GeoLocationSchema = new Schema(
@@ -40,6 +27,19 @@ const GeoLocationSchema = new Schema(
     // storing separately for flexibility (optional)
     latitude: { type: Number },
     longitude: { type: Number },
+  },
+  { _id: false }
+);
+
+/* ========================
+    STATUS HISTORY SCHEMA
+======================== */
+const StatusHistorySchema = new Schema(
+  {
+    status: { type: String, required: true },
+    note: { type: String },
+    timestamp: { type: Date, default: Date.now },
+    location: { type: GeoLocationSchema, required: false },
   },
   { _id: false }
 );
@@ -138,3 +138,7 @@ OrderSchema.pre("validate", function (next) {
 OrderSchema.index({ "deliveryLocation.coordinates": "2dsphere" });
 
 module.exports = mongoose.model("Order", OrderSchema);
+// Temporary comment to force server reload
+
+// Temporary comment to force server reload
+
