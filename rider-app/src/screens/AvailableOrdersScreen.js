@@ -492,40 +492,30 @@ const AvailableOrdersScreen = ({ navigation }) => {
   };
 
   const handleAcceptOrder = async (order) => {
-    if (!user?.isAvailable) {
-      Alert.alert("Offline Mode", "Please go online to accept orders");
-      return;
-    }
-
-    setAcceptingOrder(order._id);
-
     try {
+      setAcceptingOrder(order._id);
+
+      console.log("🔄 Accepting order:", order._id);
       const response = await orderAPI.acceptOrder(order._id);
-      console.log("Accept order response:", response.data);
+      console.log("✅ Order accepted:", response.data);
 
-      // Update state
-      dispatch(setActiveOrder(response.data.data || response.data));
-      dispatch(removeAvailableOrder(order._id));
-      dispatch(setAvailability(false));
+      if (response.data.success) {
+        dispatch(setActiveOrder(response.data.data));
+        dispatch(removeAvailableOrder(order._id));
+        dispatch(setAvailability(false));
 
-      Alert.alert(
-        "Order Accepted!",
-        `You have accepted order #${order.orderId}`,
-        [
-          {
-            text: "View Details",
-            onPress: () => navigation.navigate("Active"),
-          },
-          {
-            text: "Continue",
-            style: "cancel",
-          },
-        ]
-      );
+        Alert.alert("Success 🎉", "Order accepted successfully!");
+      } else {
+        Alert.alert(
+          "Failed",
+          response.data.message || "Failed to accept order"
+        );
+      }
     } catch (error) {
-      console.error("Accept order error:", error);
-      const message = error.response?.data?.message || "Failed to accept order";
-      Alert.alert("Error", message);
+      console.error("❌ Accept Error:", error.response?.data);
+      const message =
+        error.response?.data?.message || "Server error. Try again.";
+      Alert.alert("Accept Failed", message);
     } finally {
       setAcceptingOrder(null);
     }

@@ -55,6 +55,9 @@ export const orderAPI = {
   // rider-status এন্ডপয়েন্ট যোগ করুন যদি প্রয়োজন হয়
   updateStatus: (orderId, statusData) =>
     api.patch(`/orders/${orderId}/rider-status`, statusData),
+  updateOrder: (orderId, updateData) =>
+    api.patch(`/orders/${orderId}`, updateData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
 };
+
 export default api;

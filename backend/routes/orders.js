@@ -414,6 +414,125 @@ router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
     });
   }
 });
+
+// routes/order.routes.js - নতুন route যোগ করুন
+router.patch(
+  "/:orderId/rider-status",
+  auth,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      console.log("🛵 RIDER STATUS UPDATE:", req.params.orderId, req.body);
+
+      const { orderId } = req.params;
+      const { status, location } = req.body;
+
+      // ✅ Valid rider statuses
+      const validRiderStatuses = [
+        "picked_up",
+        "on_the_way",
+        "delivered",
+        "cancelled",
+      ];
+      if (!validRiderStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status for rider. Must be one of: ${validRiderStatuses.join(
+            ", "
+          )}`,
+        });
+      }
+
+      // ✅ Find order and verify rider ownership
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // ✅ Check if rider owns this order
+      if (order.riderId.toString() !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not assigned to this order",
+        });
+      }
+
+      // ✅ Update order status
+      order.status = status;
+      order.statusHistory.push({
+        status: status,
+        note: `Rider updated status to ${status}`,
+        timestamp: new Date(),
+      });
+
+      // ✅ Update rider location if provided
+      if (location && location.latitude && location.longitude) {
+        order.riderLocation = {
+          riderId: req.user.id,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          lastUpdated: new Date(),
+        };
+      }
+
+      await order.save();
+
+      // ✅ Populate for response
+      const populatedOrder = await Order.findById(order._id)
+        .populate("restaurantId", "name address phone")
+        .populate("customerId", "name phone address")
+        .populate("riderId", "name phone vehicleType");
+
+      // ✅ Socket notifications
+      if (req.app && req.app.get("io")) {
+        const io = req.app.get("io");
+
+        // Notify restaurant
+        if (populatedOrder.restaurantId) {
+          io.to(populatedOrder.restaurantId._id.toString()).emit(
+            "order-status-updated",
+            {
+              orderId: populatedOrder.orderId,
+              status: status,
+              order: populatedOrder,
+            }
+          );
+        }
+
+        // Notify customer
+        if (populatedOrder.customerId) {
+          io.to(populatedOrder.customerId._id.toString()).emit(
+            "order-status-updated",
+            {
+              orderId: populatedOrder.orderId,
+              status: status,
+              order: populatedOrder,
+            }
+          );
+        }
+      }
+
+      console.log("✅ Rider status updated successfully");
+      res.json({
+        success: true,
+        data: populatedOrder,
+        message: `Order status updated to ${status}`,
+      });
+    } catch (error) {
+      console.error("🔥 Rider status update error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update order status",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
 // get order details
 router.get("/:orderId", auth, async (req, res) => {
   try {

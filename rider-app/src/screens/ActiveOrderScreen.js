@@ -206,31 +206,55 @@ const ActiveOrderScreen = ({ navigation }) => {
   const handleStatusUpdate = async (newStatus) => {
     try {
       setUpdatingStatus(true);
+      console.log("🔄 Updating order status to:", newStatus);
 
+      // ✅ SAFE: Prepare status data with proper location
       const statusData = {
         status: newStatus,
-        location: riderLocation,
+        ...(riderLocation && {
+          location: riderLocation,
+        }),
+        timestamp: new Date().toISOString(),
       };
 
-      const response = await orderAPI.updateRiderStatus(
-        activeOrder._id,
-        statusData
-      );
+      console.log("📦 Status data:", statusData);
 
-      // Update Redux store
+      // ✅ FIXED API CALL - Use correct endpoint
+      // Option 1: If you have rider-status endpoint
+      const response = await orderAPI.updateStatus(activeOrder._id, statusData);
+
+      // Option 2: If no separate endpoint, use PATCH on order
+      // const response = await orderAPI.updateRiderStatus(
+      //   activeOrder._id,
+      //   statusData
+      // );
+
+      console.log("✅ Status update response:", response.data);
+
+      // ✅ SAFE: Handle response properly
+      const updatedOrder = response.data.data || response.data;
+
+      if (!updatedOrder) {
+        throw new Error("No order data in response");
+      }
+
+      // ✅ Update Redux store
       dispatch(
-        updateOrderStatus({ orderId: activeOrder._id, status: newStatus })
+        updateOrderStatus({
+          orderId: activeOrder._id,
+          status: newStatus,
+        })
       );
-      dispatch(updateActiveOrder(response.data));
+      dispatch(updateActiveOrder(updatedOrder));
 
-      // If order is delivered, clear active order and make rider available
+      // ✅ Handle delivered status
       if (newStatus === "delivered") {
-        dispatch(addToHistory(response.data));
+        dispatch(addToHistory(updatedOrder));
         dispatch(clearActiveOrder());
         dispatch(setAvailability(true));
 
         Alert.alert(
-          "Delivery Completed!",
+          "Delivery Completed! 🎉",
           `Order #${activeOrder.orderId} has been delivered successfully.`,
           [
             {
@@ -244,14 +268,35 @@ const ActiveOrderScreen = ({ navigation }) => {
           ]
         );
       } else {
-        Alert.alert("Success", `Order status updated to ${newStatus}`);
+        Alert.alert(
+          "Status Updated ✅",
+          `Order status updated to ${getStatusText(newStatus)}`
+        );
       }
     } catch (error) {
-      console.error("Update status error:", error);
-      Alert.alert("Error", "Failed to update order status");
+      console.error("❌ Update status error:", error);
+      console.log("Error response:", error.response?.data);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update order status";
+
+      Alert.alert("Update Failed", errorMessage);
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  // ✅ Helper function for status text
+  const getStatusText = (status) => {
+    const statusMap = {
+      picked_up: "Picked Up",
+      on_the_way: "On the Way",
+      delivered: "Delivered",
+      assigned: "Assigned",
+    };
+    return statusMap[status] || status;
   };
 
   const showStatusUpdateDialog = () => {
