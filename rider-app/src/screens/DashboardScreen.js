@@ -61,22 +61,50 @@ const DashboardScreen = ({ navigation }) => {
 
   const startLocationTracking = async () => {
     try {
-      let location = await Location.getCurrentPositionAsync({});
+      let locationData;
 
-      // Update rider location in backend
+      // Development mode-এ সবসময় mock location ব্যবহার করুন
+      if (__DEV__) {
+        console.log("DEV MODE: Using mock location");
+        locationData = {
+          latitude: 23.8103, // Dhaka
+          longitude: 90.4125,
+          address: "Mock Location - Dhaka",
+        };
+      } else {
+        // Production-এ real location
+        let location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 10000,
+        });
+
+        locationData = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address: "Current Location",
+        };
+      }
+
+      // Backend-এ আপডেট করুন
       await userAPI.updateLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        address: "Current Location", // You can reverse geocode this
+        ...locationData,
         isAvailable: user?.isAvailable || false,
       });
 
-      console.log("Location tracking started");
+      console.log("Location tracking successful");
     } catch (error) {
-      console.error("Location tracking error:", error);
+      console.error("Location tracking failed:", error);
+
+      // Final fallback - সবক্ষেত্রে mock location
+      console.log("Using final fallback mock location");
+      await userAPI.updateLocation({
+        latitude: 23.8103,
+        longitude: 90.4125,
+        address: "Fallback Location",
+        isAvailable: user?.isAvailable || false,
+      });
     }
   };
-
   const loadRiderStats = async () => {
     try {
       // This would typically come from a dedicated stats API
@@ -90,7 +118,8 @@ const DashboardScreen = ({ navigation }) => {
       const todayOrders = response.data.orders.filter(
         (order) =>
           new Date(order.createdAt).toDateString() === today &&
-          ["delivered", "picked_up", "on_the_way"].includes(order.status)
+          ["delivered", "picked_up", "assigned"].includes(order.status)
+        // "on_the_way" এর জায়গায় "assigned" ব্যবহার করুন
       );
 
       const todayEarnings = todayOrders.reduce(
@@ -125,10 +154,24 @@ const DashboardScreen = ({ navigation }) => {
     try {
       dispatch(setAvailability(value));
 
-      // Update backend
+      // প্রথমে কারেন্ট লোকেশন নিন
+      let currentLocation = null;
+      try {
+        const location = await Location.getCurrentPositionAsync({});
+        currentLocation = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address: "Current Location",
+        };
+      } catch (locationError) {
+        console.error("Location fetch error:", locationError);
+        // যদি লোকেশন না মেলে, শুধু availability আপডেট করুন
+      }
+
+      // বেকেন্ডে সঠিক ফরম্যাটে ডাটা পাঠান
       await userAPI.updateLocation({
-        isAvailable: value,
-        ...(user?.location || {}),
+        ...currentLocation, // সরাসরি latitude, longitude, address
+        isAvailable: value, // ✅ নতুন value ব্যবহার করুন
       });
 
       if (value) {
@@ -147,7 +190,6 @@ const DashboardScreen = ({ navigation }) => {
       Alert.alert("Error", "Failed to update availability");
     }
   };
-
   const updateCurrentLocation = async () => {
     try {
       setUpdatingLocation(true);

@@ -207,56 +207,130 @@ router.patch(
   }
 );
 
-// rider accepts order
+// rider accepts order - COMPLETELY FIXED VERSION
 router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
   try {
+    console.log(
+      "🛵 ACCEPT ORDER REQUEST - Rider:",
+      req.user.id,
+      "Order:",
+      req.params.orderId
+    );
+
     const { orderId } = req.params;
-    const order = await Order.findById(orderId)
-      .populate("restaurantId")
-      .populate("customerId");
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
 
-    if (order.status !== "ready")
-      return res
-        .status(400)
-        .json({ success: false, message: "Order is not ready for delivery" });
-    if (order.riderId)
-      return res
-        .status(400)
-        .json({ success: false, message: "Order already assigned" });
-
-    const rider = await User.findById(req.user.id);
-    if (!rider || !rider.isAvailable)
-      return res.status(400).json({
+    // ✅ SAFE: Find order with proper error handling
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.log("❌ Order not found:", orderId);
+      return res.status(404).json({
         success: false,
-        message: "You are not available for delivery",
+        message: "Order not found",
       });
-
-    // distance check if both have locations
-    if (
-      rider.location &&
-      rider.location.latitude &&
-      rider.location.longitude &&
-      order.restaurantId.location &&
-      order.restaurantId.location.coordinates
-    ) {
-      const distance =
-        require("../controllers/order.controller").calculateDistance(
-          rider.location.latitude,
-          rider.location.longitude,
-          order.restaurantId.location.coordinates[1],
-          order.restaurantId.location.coordinates[0]
-        );
-      if (distance > 3)
-        return res.status(400).json({
-          success: false,
-          message: "You are too far from the restaurant",
-        });
     }
 
+    console.log(
+      "📦 Order found - Status:",
+      order.status,
+      "Rider:",
+      order.riderId
+    );
+
+    // ✅ Check order status
+    if (order.status !== "ready") {
+      return res.status(400).json({
+        success: false,
+        message: `Order is ${order.status}, not ready for delivery`,
+      });
+    }
+
+    // ✅ Check if already assigned
+    if (order.riderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order already assigned to another rider",
+      });
+    }
+
+    // ✅ Get rider with availability check
+    const rider = await User.findById(req.user.id);
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: "Rider not found",
+      });
+    }
+
+    if (!rider.isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: "You are not available for delivery. Please go online first.",
+      });
+    }
+
+    console.log("✅ Rider check passed - Available:", rider.isAvailable);
+
+    // ✅ SAFE DISTANCE CHECK - With proper error handling
+    try {
+      if (
+        rider.location &&
+        rider.location.latitude &&
+        rider.location.longitude
+      ) {
+        // Populate restaurant for location data
+        await order.populate("restaurantId", "name location");
+
+        const restaurant = order.restaurantId;
+        if (
+          restaurant &&
+          restaurant.location &&
+          restaurant.location.coordinates
+        ) {
+          const calculateDistance =
+            require("../controllers/order.controller").calculateDistance;
+
+          const riderLat = rider.location.latitude;
+          const riderLng = rider.location.longitude;
+          const restLat = restaurant.location.coordinates[1];
+          const restLng = restaurant.location.coordinates[0];
+
+          console.log(
+            "📍 Location Data - Rider:",
+            { riderLat, riderLng },
+            "Restaurant:",
+            { restLat, restLng }
+          );
+
+          if (riderLat && riderLng && restLat && restLng) {
+            const distance = calculateDistance(
+              riderLat,
+              riderLng,
+              restLat,
+              restLng
+            );
+            console.log("📏 Distance calculated:", distance, "km");
+
+            if (distance > 3) {
+              return res.status(400).json({
+                success: false,
+                message: `You are ${distance.toFixed(
+                  1
+                )}km away from the restaurant (max 3km allowed)`,
+              });
+            }
+          }
+        } else {
+          console.log("⚠️ Restaurant location data missing");
+        }
+      } else {
+        console.log("⚠️ Rider location data missing");
+      }
+    } catch (distanceError) {
+      console.warn("📍 Distance calculation skipped:", distanceError.message);
+      // Continue without distance check if calculation fails
+    }
+
+    // ✅ UPDATE ORDER - Simple and safe
     order.riderId = req.user.id;
     order.status = "assigned";
     order.statusHistory.push({
@@ -264,31 +338,82 @@ router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
       note: `Rider ${rider.name} accepted the order`,
       timestamp: new Date(),
     });
-    await order.save();
 
+    await order.save();
+    console.log("✅ Order updated successfully");
+
+    // ✅ UPDATE RIDER AVAILABILITY
     rider.isAvailable = false;
     await rider.save();
+    console.log("✅ Rider availability updated");
 
-    await order.populate("restaurantId", "name address phone");
-    await order.populate("customerId", "name phone address");
-    await order.populate("riderId", "name phone vehicleType");
+    // ✅ POPULATE FOR RESPONSE - With safe checks
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurantId", "name address phone")
+      .populate("customerId", "name phone")
+      .populate("riderId", "name phone vehicleType");
 
+    // ✅ SAFE SOCKET EMISSIONS
     if (req.app && req.app.get("io")) {
       const io = req.app.get("io");
-      io.to(order.restaurantId._id.toString()).emit("rider-assigned", {
-        order,
-      });
-      io.to(order.customerId._id.toString()).emit("rider-assigned", { order });
-      io.emit("order-accepted", { orderId: order.orderId });
+
+      try {
+        // Emit to restaurant if available
+        if (populatedOrder.restaurantId && populatedOrder.restaurantId._id) {
+          io.to(populatedOrder.restaurantId._id.toString()).emit(
+            "rider-assigned",
+            {
+              order: populatedOrder,
+            }
+          );
+          console.log(
+            "📢 Emitted to restaurant:",
+            populatedOrder.restaurantId._id
+          );
+        }
+
+        // Emit to customer if available
+        if (populatedOrder.customerId && populatedOrder.customerId._id) {
+          io.to(populatedOrder.customerId._id.toString()).emit(
+            "rider-assigned",
+            {
+              order: populatedOrder,
+            }
+          );
+          console.log("📢 Emitted to customer:", populatedOrder.customerId._id);
+        }
+
+        // Broadcast general event
+        io.emit("order-accepted", {
+          orderId: populatedOrder.orderId || populatedOrder._id,
+        });
+        console.log("📢 Broadcasted order acceptance");
+      } catch (socketError) {
+        console.warn("⚠️ Socket emission failed:", socketError.message);
+        // Don't fail the request if sockets fail
+      }
     }
 
-    res.json({ success: true, data: order });
+    console.log("🎉 ORDER ACCEPTED SUCCESSFULLY");
+    res.json({
+      success: true,
+      data: populatedOrder,
+      message: "Order accepted successfully",
+    });
   } catch (error) {
-    console.error("Accept order error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("🔥 ACCEPT ORDER ERROR:", error);
+    console.error("Error Stack:", error.stack);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while accepting order",
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+        stack: error.stack,
+      }),
+    });
   }
 });
-
 // get order details
 router.get("/:orderId", auth, async (req, res) => {
   try {

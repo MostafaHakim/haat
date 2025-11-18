@@ -47,13 +47,14 @@ export const userAPI = {
     api.put("/users/rider/location", locationData),
 };
 
+// services/api.js - orderAPI আপডেট করুন
 export const orderAPI = {
+  getMyOrders: (params) => api.get("/orders/my-rider-orders", { params }),
   getAvailable: () => api.get("/orders/available"),
   acceptOrder: (orderId) => api.patch(`/orders/${orderId}/accept`),
-  updateRiderStatus: (orderId, statusData) =>
+  // rider-status এন্ডপয়েন্ট যোগ করুন যদি প্রয়োজন হয়
+  updateStatus: (orderId, statusData) =>
     api.patch(`/orders/${orderId}/rider-status`, statusData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
-  getMyOrders: (params) => api.get("/orders/my-rider-orders", { params }),
 };
-
 export default api;
