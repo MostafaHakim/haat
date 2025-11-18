@@ -267,6 +267,98 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+exports.updateRiderOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status, location } = req.body;
+    const riderId = req.user.id;
+
+    // 1. Validate input
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required." });
+    }
+    const validRiderStatuses = ["picked_up", "on_the_way", "delivered", "cancelled"];
+    if (!validRiderStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status: ${status}` });
+    }
+
+    // 2. Find and verify the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    if (!order.riderId || order.riderId.toString() !== riderId) {
+      return res.status(403).json({ success: false, message: "You are not assigned to this order." });
+    }
+
+    // 3. Prepare status history entry
+    const statusUpdate = {
+      status,
+      note: `Rider updated status to ${status}`,
+      timestamp: new Date(),
+    };
+
+    if (location && location.latitude && location.longitude) {
+      statusUpdate.location = {
+        type: "Point",
+        coordinates: [location.longitude, location.latitude],
+        latitude: location.latitude,
+        longitude: location.longitude,
+      };
+      // Also update the main riderLocation field for quick access
+      order.riderLocation = {
+        riderId,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: location.address,
+        lastUpdated: new Date(),
+      };
+    }
+
+    // 4. Update order
+    order.status = status;
+    order.statusHistory.push(statusUpdate);
+
+    // If delivered, make rider available again
+    if (status === "delivered") {
+      const rider = await User.findById(riderId);
+      if (rider) {
+        rider.isAvailable = true;
+        await rider.save();
+      }
+    }
+
+    await order.save();
+
+    // 5. Populate and emit notifications
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurantId", "name phone")
+      .populate("customerId", "name phone");
+
+    const io = req.app.get("io");
+    if (io) {
+      const customerRoom = populatedOrder.customerId._id.toString();
+      io.to(customerRoom).emit("order-status-updated", {
+        orderId: populatedOrder.orderId,
+        status: populatedOrder.status,
+        order: populatedOrder,
+      });
+    }
+
+    // 6. Send response
+    res.json({
+      success: true,
+      message: `Order status updated to ${status}`,
+      data: populatedOrder,
+    });
+
+  } catch (error) {
+    console.error("Rider status update error:", error);
+    res.status(500).json({ success: false, message: "Server error while updating status." });
+  }
+};
+
 // Export helpers
 exports.notifyAvailableRiders = notifyAvailableRiders;
 exports.calculateDistance = calculateDistance;

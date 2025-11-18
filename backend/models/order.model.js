@@ -24,6 +24,7 @@ const StatusHistorySchema = new Schema(
     status: { type: String, required: true },
     note: { type: String },
     timestamp: { type: Date, default: Date.now },
+    location: { type: GeoLocationSchema, required: false },
   },
   { _id: false }
 );

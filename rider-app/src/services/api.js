@@ -47,38 +47,14 @@ export const userAPI = {
     api.put("/users/rider/location", locationData),
 };
 
-// services/api.js - orderAPI আপডেট করুন
 export const orderAPI = {
   getMyOrders: (params) => api.get("/orders/my-rider-orders", { params }),
   getAvailable: () => api.get("/orders/available"),
   acceptOrder: (orderId) => api.patch(`/orders/${orderId}/accept`),
-  // rider-status এন্ডপয়েন্ট যোগ করুন যদি প্রয়োজন হয়
+  // This is the new, correct function
   updateStatus: (orderId, statusData) =>
-    api.patch(`/orders/${orderId}/rider-status`, statusData),
-  updateOrder: (orderId, updateData) =>
-    api.patch(`/orders/${orderId}`, updateData),
+    api.patch(`/orders/${orderId}/rider/update-status`, statusData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
-  updateStatus: async (orderId, statusData) => {
-    try {
-      // Try rider-status endpoint first
-      return await api.patch(`/orders/${orderId}/rider-status`, {
-        status: statusData.status,
-        // Remove location to avoid model issues
-      });
-    } catch (error) {
-      console.warn("Rider-status failed, trying fallback...");
-
-      // Fallback 1: Try regular order update
-      try {
-        return await api.patch(`/orders/${orderId}`, {
-          status: statusData.status,
-        });
-      } catch (secondError) {
-        console.warn("All API endpoints failed");
-        throw secondError;
-      }
-    }
-  },
 };
 
 export default api;
