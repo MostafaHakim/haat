@@ -208,7 +208,6 @@ const ActiveOrderScreen = ({ navigation }) => {
       setUpdatingStatus(true);
 
       // ✅ GET activeOrder FROM REDUX
-      const { activeOrder } = useSelector((state) => state.orders);
 
       if (!activeOrder) {
         Alert.alert("Error", "No active order found");

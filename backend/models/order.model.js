@@ -52,6 +52,14 @@ const OrderSchema = new Schema(
 
     customerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
+    riderLocation: {
+      riderId: { type: Schema.Types.ObjectId, ref: "User" },
+      latitude: { type: Number },
+      longitude: { type: Number },
+      address: { type: String },
+      lastUpdated: { type: Date, default: Date.now },
+    },
+
     restaurantId: {
       type: Schema.Types.ObjectId,
       ref: "Restaurant",
