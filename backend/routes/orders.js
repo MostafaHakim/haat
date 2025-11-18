@@ -106,6 +106,43 @@ router.get(
   }
 );
 
+// get available orders for riders
+router.get("/available", auth, authorize("rider"), async (req, res) => {
+  try {
+    const rider = req.user;
+    if (!rider.location || !rider.location.latitude) {
+      return res.json({ success: true, data: [] }); // Return empty if rider location is not set
+    }
+
+    const availableOrders = await Order.find({
+      status: "ready",
+      riderId: null,
+    }).populate("restaurantId", "name address location");
+
+    const nearbyOrders = availableOrders.filter((order) => {
+      if (
+        !order.restaurantId ||
+        !order.restaurantId.location ||
+        !order.restaurantId.location.coordinates
+      ) {
+        return false;
+      }
+      const distance = orderController.calculateDistance(
+        rider.location.latitude,
+        rider.location.longitude,
+        order.restaurantId.location.coordinates[1],
+        order.restaurantId.location.coordinates[0]
+      );
+      return distance <= 3; // 3km radius
+    });
+
+    res.json({ success: true, data: nearbyOrders });
+  } catch (error) {
+    console.error("Get available orders error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // restaurant updates order status
 router.patch(
   "/:orderId/status",
