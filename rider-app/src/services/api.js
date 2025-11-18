@@ -58,6 +58,27 @@ export const orderAPI = {
   updateOrder: (orderId, updateData) =>
     api.patch(`/orders/${orderId}`, updateData),
   getById: (orderId) => api.get(`/orders/${orderId}`),
+  updateStatus: async (orderId, statusData) => {
+    try {
+      // Try rider-status endpoint first
+      return await api.patch(`/orders/${orderId}/rider-status`, {
+        status: statusData.status,
+        // Remove location to avoid model issues
+      });
+    } catch (error) {
+      console.warn("Rider-status failed, trying fallback...");
+
+      // Fallback 1: Try regular order update
+      try {
+        return await api.patch(`/orders/${orderId}`, {
+          status: statusData.status,
+        });
+      } catch (secondError) {
+        console.warn("All API endpoints failed");
+        throw secondError;
+      }
+    }
+  },
 };
 
 export default api;

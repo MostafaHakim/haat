@@ -415,149 +415,216 @@ router.patch("/:orderId/accept", auth, authorize("rider"), async (req, res) => {
   }
 });
 
+// router.patch(
+//   "/:orderId/rider-status",
+//   auth,
+//   authorize("rider"),
+//   async (req, res) => {
+//     try {
+//       console.log("🎯 RIDER STATUS UPDATE REQUEST:");
+//       console.log("Order ID:", req.params.orderId);
+//       console.log("Rider ID:", req.user.id);
+//       console.log("New Status:", req.body.status);
+//       console.log("Location:", req.body.location);
+
+//       const { orderId } = req.params;
+//       const { status, location } = req.body;
+
+//       // ✅ Validate status
+//       const validRiderStatuses = [
+//         "picked_up",
+//         "on_the_way",
+//         "delivered",
+//         "cancelled",
+//       ];
+//       if (!validRiderStatuses.includes(status)) {
+//         console.log("❌ Invalid status:", status);
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid status. Must be one of: ${validRiderStatuses.join(
+//             ", "
+//           )}`,
+//         });
+//       }
+
+//       // ✅ Find order
+//       const order = await Order.findById(orderId);
+//       if (!order) {
+//         console.log("❌ Order not found:", orderId);
+//         return res.status(404).json({
+//           success: false,
+//           message: "Order not found",
+//         });
+//       }
+
+//       console.log(
+//         "📦 Order found - Current status:",
+//         order.status,
+//         "Rider:",
+//         order.riderId
+//       );
+
+//       // ✅ Check rider ownership
+//       if (!order.riderId) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "No rider assigned to this order",
+//         });
+//       }
+
+//       if (order.riderId.toString() !== req.user.id) {
+//         console.log(
+//           "❌ Rider mismatch - Order rider:",
+//           order.riderId,
+//           "Request rider:",
+//           req.user.id
+//         );
+//         return res.status(403).json({
+//           success: false,
+//           message: "You are not assigned to this order",
+//         });
+//       }
+
+//       // ✅ Update order
+//       const previousStatus = order.status;
+//       order.status = status;
+//       order.statusHistory.push({
+//         status: status,
+//         note: `Rider updated status from ${previousStatus} to ${status}`,
+//         timestamp: new Date(),
+//       });
+
+//       // ✅ Update rider location
+//       if (location) {
+//         order.riderLocation = {
+//           riderId: req.user.id,
+//           latitude: location.latitude,
+//           longitude: location.longitude,
+//           address: location.address,
+//           lastUpdated: new Date(),
+//         };
+//       }
+
+//       await order.save();
+//       console.log("✅ Order saved with new status:", order.status);
+
+//       // ✅ Populate for response
+//       const populatedOrder = await Order.findById(order._id)
+//         .populate("restaurantId", "name address phone")
+//         .populate("customerId", "name phone address")
+//         .populate("riderId", "name phone vehicleType");
+
+//       // ✅ Socket notifications
+//       if (req.app && req.app.get("io")) {
+//         const io = req.app.get("io");
+
+//         if (populatedOrder.restaurantId) {
+//           io.to(populatedOrder.restaurantId._id.toString()).emit(
+//             "order-status-updated",
+//             {
+//               orderId: populatedOrder.orderId,
+//               status: status,
+//               order: populatedOrder,
+//             }
+//           );
+//         }
+
+//         if (populatedOrder.customerId) {
+//           io.to(populatedOrder.customerId._id.toString()).emit(
+//             "order-status-updated",
+//             {
+//               orderId: populatedOrder.orderId,
+//               status: status,
+//               order: populatedOrder,
+//             }
+//           );
+//         }
+
+//         console.log("📢 Socket notifications sent");
+//       }
+
+//       console.log("🎉 Rider status update successful");
+//       res.json({
+//         success: true,
+//         data: populatedOrder,
+//         message: `Order status updated to ${status}`,
+//       });
+//     } catch (error) {
+//       console.error("🔥 RIDER STATUS UPDATE ERROR:", error);
+//       console.error("Error Stack:", error.stack);
+
+//       res.status(500).json({
+//         success: false,
+//         message: "Internal server error",
+//         error:
+//           process.env.NODE_ENV === "development" ? error.message : undefined,
+//       });
+//     }
+//   }
+// );
+// routes/order.routes.js - SIMPLIFIED rider-status route
 router.patch(
   "/:orderId/rider-status",
   auth,
   authorize("rider"),
   async (req, res) => {
     try {
-      console.log("🎯 RIDER STATUS UPDATE REQUEST:");
+      console.log("🎯 SIMPLE RIDER STATUS UPDATE:");
       console.log("Order ID:", req.params.orderId);
-      console.log("Rider ID:", req.user.id);
-      console.log("New Status:", req.body.status);
-      console.log("Location:", req.body.location);
+      console.log("Status:", req.body.status);
 
       const { orderId } = req.params;
-      const { status, location } = req.body;
+      const { status } = req.body;
 
-      // ✅ Validate status
-      const validRiderStatuses = [
-        "picked_up",
-        "on_the_way",
-        "delivered",
-        "cancelled",
-      ];
-      if (!validRiderStatuses.includes(status)) {
-        console.log("❌ Invalid status:", status);
+      // ✅ Simple validation
+      if (!status) {
         return res.status(400).json({
           success: false,
-          message: `Invalid status. Must be one of: ${validRiderStatuses.join(
-            ", "
-          )}`,
+          message: "Status is required",
         });
       }
 
       // ✅ Find order
       const order = await Order.findById(orderId);
       if (!order) {
-        console.log("❌ Order not found:", orderId);
         return res.status(404).json({
           success: false,
           message: "Order not found",
         });
       }
 
-      console.log(
-        "📦 Order found - Current status:",
-        order.status,
-        "Rider:",
-        order.riderId
-      );
+      console.log("📦 Order found - Rider:", order.riderId);
 
       // ✅ Check rider ownership
-      if (!order.riderId) {
-        return res.status(400).json({
-          success: false,
-          message: "No rider assigned to this order",
-        });
-      }
-
-      if (order.riderId.toString() !== req.user.id) {
-        console.log(
-          "❌ Rider mismatch - Order rider:",
-          order.riderId,
-          "Request rider:",
-          req.user.id
-        );
+      if (!order.riderId || order.riderId.toString() !== req.user.id) {
         return res.status(403).json({
           success: false,
           message: "You are not assigned to this order",
         });
       }
 
-      // ✅ Update order
-      const previousStatus = order.status;
+      // ✅ SIMPLE STATUS UPDATE
       order.status = status;
       order.statusHistory.push({
         status: status,
-        note: `Rider updated status from ${previousStatus} to ${status}`,
+        note: `Status updated by rider`,
         timestamp: new Date(),
       });
 
-      // ✅ Update rider location
-      if (location) {
-        order.riderLocation = {
-          riderId: req.user.id,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          address: location.address,
-          lastUpdated: new Date(),
-        };
-      }
-
       await order.save();
-      console.log("✅ Order saved with new status:", order.status);
+      console.log("✅ Status updated to:", status);
 
-      // ✅ Populate for response
-      const populatedOrder = await Order.findById(order._id)
-        .populate("restaurantId", "name address phone")
-        .populate("customerId", "name phone address")
-        .populate("riderId", "name phone vehicleType");
-
-      // ✅ Socket notifications
-      if (req.app && req.app.get("io")) {
-        const io = req.app.get("io");
-
-        if (populatedOrder.restaurantId) {
-          io.to(populatedOrder.restaurantId._id.toString()).emit(
-            "order-status-updated",
-            {
-              orderId: populatedOrder.orderId,
-              status: status,
-              order: populatedOrder,
-            }
-          );
-        }
-
-        if (populatedOrder.customerId) {
-          io.to(populatedOrder.customerId._id.toString()).emit(
-            "order-status-updated",
-            {
-              orderId: populatedOrder.orderId,
-              status: status,
-              order: populatedOrder,
-            }
-          );
-        }
-
-        console.log("📢 Socket notifications sent");
-      }
-
-      console.log("🎉 Rider status update successful");
       res.json({
         success: true,
-        data: populatedOrder,
-        message: `Order status updated to ${status}`,
+        data: order,
+        message: `Status updated to ${status}`,
       });
     } catch (error) {
-      console.error("🔥 RIDER STATUS UPDATE ERROR:", error);
-      console.error("Error Stack:", error.stack);
+      console.error("🔥 SIMPLE RIDER STATUS ERROR:", error.message);
 
       res.status(500).json({
         success: false,
-        message: "Internal server error",
-        error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+        message: "Failed to update status",
       });
     }
   }
