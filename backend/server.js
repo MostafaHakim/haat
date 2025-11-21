@@ -6,6 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const Order = require("./models/order.model"); // ✅ Missing import fixed
+const User = require("./models/User");
 
 const app = express();
 const server = http.createServer(app);
@@ -63,23 +64,32 @@ io.on("connection", (socket) => {
 
   // Rider live location
   socket.on("rider-location-update", async (data) => {
-    const { orderId, riderId, latitude, longitude, restaurantId, customerId } =
-      data;
+    const { riderId, latitude, longitude } = data;
 
-    // Broadcast to restaurant & customer
-    socket.to(restaurantId).emit("rider-location-changed", data);
-    socket.to(customerId).emit("rider-location-changed", data);
-
-    // Save location in DB
     try {
-      await Order.findByIdAndUpdate(orderId, {
-        riderLocation: {
-          riderId,
-          latitude,
-          longitude,
-          lastUpdated: new Date(),
+      // Save location in DB
+      await User.findByIdAndUpdate(riderId, {
+        location: {
+          type: "Point",
+          coordinates: [longitude, latitude],
         },
       });
+
+      // Find active order for the rider
+      const order = await Order.findOne({
+        riderId,
+        status: { $in: ["assigned", "picked_up", "on_way"] },
+      });
+
+      if (order) {
+        // Broadcast to restaurant & customer
+        socket
+          .to(order.restaurantId.toString())
+          .emit("rider-location-changed", data);
+        socket
+          .to(order.customerId.toString())
+          .emit("rider-location-changed", data);
+      }
     } catch (err) {
       console.error("Rider location update failed:", err);
     }

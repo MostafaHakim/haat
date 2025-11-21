@@ -148,4 +148,20 @@ router.put("/my-restaurant", auth, authorize("seller"), async (req, res) => {
   }
 });
 
+// Get a single restaurant by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id).populate(
+      "sellerId",
+      "name phone"
+    );
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+    res.json(restaurant);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

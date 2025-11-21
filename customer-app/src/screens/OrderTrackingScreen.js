@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -94,10 +95,14 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       }
     });
 
-    newSocket.on("rider-location-updated", (data) => {
-      if (data.orderId === orderId) {
-        setRiderLocation(data.location);
-        dispatch(updateRiderLocation({ orderId, location: data.location }));
+    newSocket.on("rider-location-changed", (data) => {
+      if (order && order.riderId && order.riderId._id === data.riderId) {
+        const newLocation = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+        };
+        setRiderLocation(newLocation);
+        dispatch(updateRiderLocation({ orderId, location: newLocation }));
         calculateETA();
       }
     });
@@ -675,8 +680,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
-// TouchableOpacity import যোগ করুন
-import { TouchableOpacity } from "react-native";
 
 export default OrderTrackingScreen;

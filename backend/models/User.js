@@ -21,12 +21,13 @@ const userSchema = new mongoose.Schema(
     isAvailable: { type: Boolean, default: false },
     // Location for riders and customers
     location: {
-      latitude: { type: Number },
-      longitude: { type: Number },
-      address: { type: String },
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
   },
   { timestamps: true }
 );
+
+userSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("User", userSchema);

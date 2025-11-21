@@ -39,12 +39,15 @@ router.put("/profile", auth, async (req, res) => {
 // Update rider location and availability
 router.put("/rider/location", auth, authorize("rider"), async (req, res) => {
   try {
-    const { latitude, longitude, address, isAvailable } = req.body;
+    const { latitude, longitude, isAvailable } = req.body;
 
     const rider = await User.findByIdAndUpdate(
       req.user.id,
       {
-        location: { latitude, longitude, address },
+        location: {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        },
         ...(isAvailable !== undefined && { isAvailable }),
       },
       { new: true }
@@ -70,41 +73,39 @@ router.get("/riders/available", auth, async (req, res) => {
     const riders = await User.find({
       userType: "rider",
       isAvailable: true,
-      "location.latitude": { $exists: true },
-      "location.longitude": { $exists: true },
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+          },
+          $maxDistance: 3000, // 3km in meters
+        },
+      },
     });
 
-    // Calculate distance and filter riders within 3km
-    const availableRiders = riders.filter((rider) => {
-      const distance = calculateDistance(
-        parseFloat(latitude),
-        parseFloat(longitude),
-        rider.location.latitude,
-        rider.location.longitude
-      );
-      return distance <= 3; // 3km radius
-    });
-
-    res.json(availableRiders);
+    res.json(riders);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// Helper function to calculate distance between two coordinates
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return distance;
-}
+  
+
+// Get a single rider by ID
+router.get("/riders/:id", async (req, res) => {
+  try {
+    const rider = await User.findOne({
+      _id: req.params.id,
+      userType: "rider",
+    }).select("-password");
+    if (!rider) {
+      return res.status(404).json({ message: "Rider not found" });
+    }
+    res.json(rider);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
