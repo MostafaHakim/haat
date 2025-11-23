@@ -7,9 +7,14 @@ require("dotenv").config();
 
 const Order = require("./models/order.model"); // ✅ Missing import fixed
 const User = require("./models/User");
-
 const app = express();
 const server = http.createServer(app);
+
+const authRoute = require("./routes/auth");
+const userRoute = require("./routes/users");
+const resturentsRoute = require("./routes/restaurants");
+const productsRoute = require("./routes/products");
+const orderRoute = require("./routes/orders"); // ✅ Missing import fixed
 
 const io = socketIo(server, {
   cors: {
@@ -32,11 +37,11 @@ mongoose
 app.set("io", io);
 
 // Routes
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/users", require("./routes/users"));
-app.use("/api/restaurants", require("./routes/restaurants"));
-app.use("/api/products", require("./routes/products"));
-app.use("/api/orders", require("./routes/orders")); // ⚠️ Ensure this file exists
+app.use("/api/auth", authRoute);
+app.use("/api/users", userRoute);
+app.use("/api/restaurants", resturentsRoute);
+app.use("/api/products", productsRoute);
+app.use("/api/orders", orderRoute);
 
 // Base route
 app.get("/", (req, res) => {
@@ -99,6 +104,8 @@ io.on("connection", (socket) => {
     console.log("User disconnected:", socket.id);
   });
 });
-
+console.log("Rider Location:", rider.location);
+console.log("Available Orders:", availableOrders.length);
+console.log("Nearby Orders:", nearbyOrders.length);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

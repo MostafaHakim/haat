@@ -35,17 +35,22 @@ const EarningsScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      // Load order history
       const response = await orderAPI.getMyOrders({
         page: 1,
         limit: 50,
         status: "all",
       });
 
-      const orders = response.data.orders;
+      const orders = response.data.orders || [];
       setOrderHistory(orders);
 
-      // Calculate earnings
+      // Convert UTC createdAt -> Local BD time (UTC+6)
+      const toLocal = (dateString) => {
+        const d = new Date(dateString);
+        return new Date(d.getTime() + 6 * 60 * 60 * 1000); // BD timezone
+      };
+
+      // Local date references
       const today = new Date();
       const todayStart = new Date(
         today.getFullYear(),
@@ -53,49 +58,41 @@ const EarningsScreen = ({ navigation }) => {
         today.getDate()
       );
 
-      const todayOrders = orders.filter(
-        (order) =>
-          new Date(order.createdAt) >= todayStart &&
-          ["delivered", "picked_up", "on_the_way"].includes(order.status)
-      );
+      const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      const weeklyOrders = orders.filter((order) => {
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return (
-          new Date(order.createdAt) >= weekAgo &&
-          ["delivered", "picked_up", "on_the_way"].includes(order.status)
-        );
+      const monthAgo = new Date(todayStart);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+      // Status considered as earnings
+      const validStatus = ["delivered", "picked_up", "on_the_way"];
+
+      // Filters
+      const todayOrders = orders.filter((o) => {
+        const t = toLocal(o.createdAt);
+        return t >= todayStart && validStatus.includes(o.status);
       });
 
-      const monthlyOrders = orders.filter((order) => {
-        const monthAgo = new Date(
-          today.getFullYear(),
-          today.getMonth() - 1,
-          today.getDate()
-        );
-        return (
-          new Date(order.createdAt) >= monthAgo &&
-          ["delivered", "picked_up", "on_the_way"].includes(order.status)
-        );
+      const weeklyOrders = orders.filter((o) => {
+        const t = toLocal(o.createdAt);
+        return t >= weekAgo && validStatus.includes(o.status);
       });
 
-      const calculatedEarnings = {
-        today: todayOrders.reduce(
-          (sum, order) => sum + (order.deliveryFee || 0),
-          0
-        ),
-        weekly: weeklyOrders.reduce(
-          (sum, order) => sum + (order.deliveryFee || 0),
-          0
-        ),
+      const monthlyOrders = orders.filter((o) => {
+        const t = toLocal(o.createdAt);
+        return t >= monthAgo && validStatus.includes(o.status);
+      });
+
+      const calculated = {
+        today: todayOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0),
+        weekly: weeklyOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0),
         monthly: monthlyOrders.reduce(
-          (sum, order) => sum + (order.deliveryFee || 0),
+          (sum, o) => sum + (o.deliveryFee || 0),
           0
         ),
-        total: orders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0),
+        total: orders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0),
       };
 
-      setEarnings(calculatedEarnings);
+      setEarnings(calculated);
     } catch (error) {
       console.error("Load earnings error:", error);
       Alert.alert("Error", "Failed to load earnings data");
