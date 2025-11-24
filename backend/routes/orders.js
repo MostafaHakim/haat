@@ -110,10 +110,6 @@ router.get(
 router.get("/available", auth, authorize("rider"), async (req, res) => {
   try {
     const rider = req.user;
-    console.log("Rider Location:", rider.location);
-    console.log("Available Orders:", availableOrders.length);
-    console.log("Nearby Orders:", nearbyOrders.length);
-
     if (!rider.location || !rider.location.latitude) {
       return res.json({ success: true, data: [] }); // Return empty if rider location is not set
     }
@@ -137,6 +133,9 @@ router.get("/available", auth, authorize("rider"), async (req, res) => {
         order.restaurantId.location.coordinates[1],
         order.restaurantId.location.coordinates[0]
       );
+      console.log("Rider Location:", rider.location);
+      console.log("Available Orders:", availableOrders.length);
+      console.log("Nearby Orders:", nearbyOrders.length);
       return distance <= 3; // 3km radius
     });
 
