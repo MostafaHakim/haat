@@ -107,11 +107,16 @@ router.get(
 );
 
 // get available orders for riders
+// get available orders for riders
 router.get("/available", auth, authorize("rider"), async (req, res) => {
   try {
     const rider = req.user;
+
+    console.log("🔵 Rider Data:", rider);
+
     if (!rider.location || !rider.location.latitude) {
-      return res.json({ success: true, data: [] }); // Return empty if rider location is not set
+      console.log("⚠️ Rider location missing");
+      return res.json({ success: true, data: [] });
     }
 
     const availableOrders = await Order.find({
@@ -119,29 +124,34 @@ router.get("/available", auth, authorize("rider"), async (req, res) => {
       riderId: null,
     }).populate("restaurantId", "name address location");
 
+    console.log("📦 Found Ready Orders:", availableOrders.length);
+
     const nearbyOrders = availableOrders.filter((order) => {
-      if (
-        !order.restaurantId ||
-        !order.restaurantId.location ||
-        !order.restaurantId.location.coordinates
-      ) {
+      if (!order.restaurantId?.location?.coordinates) {
         return false;
       }
+
       const distance = orderController.calculateDistance(
         rider.location.latitude,
         rider.location.longitude,
         order.restaurantId.location.coordinates[1],
         order.restaurantId.location.coordinates[0]
       );
-      console.log("Rider Location:", rider.location);
-      console.log("Available Orders:", availableOrders.length);
-      console.log("Nearby Orders:", nearbyOrders.length);
-      return distance <= 3; // 3km radius
+
+      console.log(
+        `📍 Distance for Order ${order._id}:`,
+        distance.toFixed(2),
+        "km"
+      );
+
+      return distance <= 3;
     });
+
+    console.log("🟢 Nearby Orders Found:", nearbyOrders.length);
 
     res.json({ success: true, data: nearbyOrders });
   } catch (error) {
-    console.error("Get available orders error:", error);
+    console.error("🔥 Get available orders error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
